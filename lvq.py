@@ -68,102 +68,101 @@ class LVQ:
 # Aplikasi Streamlit
 st.title("Klasifikasi Diabetes Menggunakan LVQ")
 
-# Pengunggah file
-file_diunggah = st.file_uploader("Pilih file CSV", type="csv")
-if file_diunggah is not None:
-    df = pd.read_csv(file_diunggah)
+# Membaca file CSV
+file_path = "diabetes(LVQ, KNN, KMEANS).csv"
+df = pd.read_csv(file_path)
+
+st.write("Dataset:")
+st.write(df.head())
+
+st.write("Deskripsi Dataset:")
+st.write(df.describe())
+
+st.write("Info Dataset:")
+buffer = io.StringIO()
+df.info(buf=buffer)
+s = buffer.getvalue()
+st.text(s)
+
+# Praproses data
+X = df.iloc[:, :-1]
+y = df.iloc[:, -1]
+
+Q1 = X.quantile(0.25)
+Q3 = X.quantile(0.75)
+IQR = Q3 - Q1
+
+outliers = ((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)
+lower_bound = Q1 - 1.5 * IQR
+upper_bound = Q3 + 1.5 * IQR
+X[outliers] = np.where(X[outliers] < lower_bound, lower_bound, X[outliers])
+X[outliers] = np.where(X[outliers] > upper_bound, upper_bound, X[outliers])
+
+le = LabelEncoder()
+y_encoded = le.fit_transform(y)
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Pastikan setiap kelas memiliki minimal 20 data
+kelas_0 = df[df.iloc[:, -1] == 0]
+kelas_1 = df[df.iloc[:, -1] == 1]
+
+if len(kelas_0) >= 20 and len(kelas_1) >= 20:
+    kelas_0_sample = kelas_0.sample(n=20, random_state=42)
+    kelas_1_sample = kelas_1.sample(n=20, random_state=42)
     
-    st.write("Dataset:")
-    st.write(df.head())
+    data_sample = pd.concat([kelas_0_sample, kelas_1_sample])
     
-    st.write("Deskripsi Dataset:")
-    st.write(df.describe())
+    # Pisahkan fitur dan label dari data sample
+    X_sample = data_sample.iloc[:, :-1]
+    y_sample = data_sample.iloc[:, -1]
+
+    # Encode label
+    y_sample_encoded = le.fit_transform(y_sample)
+
+    # Normalisasi fitur
+    X_sample_scaled = scaler.fit_transform(X_sample)
+
+    # Bagi data sample menjadi train dan test
+    X_train, X_test, y_train, y_test = train_test_split(X_sample_scaled, y_sample_encoded, test_size=0.2, random_state=42)
+
+    st.write(f"Ukuran data train: {X_train.shape[0]}")
+    st.write(f"Ukuran data uji: {X_test.shape[0]}")
+
+    # Inisialisasi dan latih model LVQ
+    lvq = LVQ(n_prototypes=4, alpha=0.01, learning_rate=0.2, max_epochs=150, min_error=0.01)
+    lvq.fit(X_train, y_train)
     
-    st.write("Info Dataset:")
-    buffer = io.StringIO()
-    df.info(buf=buffer)
-    s = buffer.getvalue()
-    st.text(s)
+    y_test_pred = lvq.predict(X_test)
+    test_accuracy = (y_test_pred == y_test).mean()
+    st.write(f"Akurasi Uji: {test_accuracy:.2f}")
 
-    # Praproses data
-    X = df.iloc[:, :-1]
-    y = df.iloc[:, -1]
+    bobot, bobot_target = lvq.nilai_bobot()
+    st.write("Bobot Akhir:")
+    for proto, label in zip(bobot, bobot_target):
+        st.write(f"Kelas {label}: {proto}")
 
-    Q1 = X.quantile(0.25)
-    Q3 = X.quantile(0.75)
-    IQR = Q3 - Q1
+    st.write("Target Aktual vs Target Prediksi :")
+    perbandingan = pd.DataFrame({"Aktual": y_test, "Prediksi": y_test_pred})
+    st.write(perbandingan)
 
-    outliers = ((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    X[outliers] = np.where(X[outliers] < lower_bound, lower_bound, X[outliers])
-    X[outliers] = np.where(X[outliers] > upper_bound, upper_bound, X[outliers])
-
-    le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
-
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    # Pastikan setiap kelas memiliki minimal 20 data
-    kelas_0 = df[df.iloc[:, -1] == 0]
-    kelas_1 = df[df.iloc[:, -1] == 1]
-
-    if len(kelas_0) >= 20 and len(kelas_1) >= 20:
-        kelas_0_sample = kelas_0.sample(n=20, random_state=42)
-        kelas_1_sample = kelas_1.sample(n=20, random_state=42)
-        
-        data_sample = pd.concat([kelas_0_sample, kelas_1_sample])
-        
-        # Pisahkan fitur dan label dari data sample
-        X_sample = data_sample.iloc[:, :-1]
-        y_sample = data_sample.iloc[:, -1]
-
-        # Encode label
-        y_sample_encoded = le.fit_transform(y_sample)
-
-        # Normalisasi fitur
-        X_sample_scaled = scaler.fit_transform(X_sample)
-
-        # Bagi data sample menjadi train dan test
-        X_train, X_test, y_train, y_test = train_test_split(X_sample_scaled, y_sample_encoded, test_size=0.2, random_state=42)
-
-        st.write(f"Ukuran data train: {X_train.shape[0]}")
-        st.write(f"Ukuran data uji: {X_test.shape[0]}")
-
-        # Inisialisasi dan latih model LVQ
-        lvq = LVQ(n_prototypes=4, alpha=0.01, learning_rate=0.2, max_epochs=150, min_error=0.01)
-        lvq.fit(X_train, y_train)
-        
-        y_test_pred = lvq.predict(X_test)
-        test_accuracy = (y_test_pred == y_test).mean()
-        st.write(f"Akurasi Uji: {test_accuracy:.2f}")
-
-        bobot, bobot_target = lvq.nilai_bobot()
-        st.write("Bobot Akhir:")
-        for proto, label in zip(bobot, bobot_target):
-            st.write(f"Kelas {label}: {proto}")
-
-        st.write("Target Aktual vs Target Prediksi :")
-        perbandingan = pd.DataFrame({"Aktual": y_test, "Prediksi": y_test_pred})
-        st.write(perbandingan)
-
-        # Input prediksi
-        st.write("## Prediksi Diabetes")
-        input_data = []
-        for col in X.columns:
-            nilai = st.number_input(f"Masukkan {col}", value=0.0)
-            input_data.append(nilai)
-        
-        input_data = np.array(input_data).reshape(1, -1)
-        input_data_scaled = scaler.transform(input_data)
-        
-        if st.button("Prediksi"):
-            prediksi = lvq.predict(input_data_scaled)
-            prediksi_label = le.inverse_transform(prediksi)
-            if prediksi_label[0] == 1:
-                st.write("Kelas prediksi untuk data input adalah: 1 (Diabetes)")
-            else:
-                st.write("Kelas prediksi untuk data input adalah: 0 (Non-Diabetes)")
-    else:
-        st.write("Dataset tidak memiliki minimal 20 data untuk setiap kelas.")
+    # Input prediksi
+    st.write("## Prediksi Diabetes")
+    input_data = []
+    for col in X.columns:
+        nilai = st.number_input(f"Masukkan {col}", value=0.0)
+        input_data.append(nilai)
+    
+    input_data = np.array(input_data).reshape(1, -1)
+    input_data_scaled = scaler.transform(input_data)
+    
+    if st.button("Prediksi"):
+        prediksi = lvq.predict(input_data_scaled)
+        prediksi_label = le.inverse_transform(prediksi)
+        if prediksi_label[0] == 1:
+            st.write("Kelas prediksi untuk data input adalah: 1 (Diabetes)")
+        else:
+            st.write("Kelas prediksi untuk data input adalah: 0 (Non-Diabetes)")
+else:
+    st.write("Dataset tidak memiliki minimal 20 data untuk setiap kelas.")
