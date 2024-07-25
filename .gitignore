@@ -1,2 +1,3 @@
 # Direktori virtual environment
 venv/
+*.xlsx
