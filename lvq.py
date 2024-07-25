@@ -1,66 +1,9 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
-import streamlit as st
+from sklearn.preprocessing import StandardScaler
+import random
 import io
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import train_test_split
-
-# Definisi kelas LVQ
-class LVQ:
-    def __init__(self, n_prototypes=1, alpha=0.01, learning_rate=0.1, max_epochs=100, min_error=0.01):
-        self.n_prototypes = n_prototypes
-        self.alpha = alpha
-        self.learning_rate = learning_rate
-        self.max_epochs = max_epochs
-        self.min_error = min_error
-        self.epoch_bobots = []
-
-    def inisialisasi_bobot(self, X, y):
-        kelas_unik = np.unique(y)
-        self.prototypes = []
-        self.prototype_labels = []
-        for kelas in kelas_unik:
-            indeks_kelas = np.where(y == kelas)[0]
-            indeks_dipilih = np.random.choice(indeks_kelas, self.n_prototypes, replace=False)
-            for idx in indeks_dipilih:
-                self.prototypes.append(X[idx])
-                self.prototype_labels.append(kelas)
-        self.prototypes = np.array(self.prototypes)
-        self.prototype_labels = np.array(self.prototype_labels)
-
-    def perbarui_bobot(self, X, y):
-        epoch = 0
-        eps = 1
-
-        while epoch < self.max_epochs or self.alpha > eps:
-            epoch += 1
-            for xi, yi in zip(X, y):
-                jarak = np.linalg.norm(self.prototypes - xi, axis=1)
-                indeks_pemenang = np.argmin(jarak)
-                label_pemenang = self.prototype_labels[indeks_pemenang]
-
-                if label_pemenang == yi:
-                    self.prototypes[indeks_pemenang] += self.alpha * (xi - self.prototypes[indeks_pemenang])
-                else:
-                    self.prototypes[indeks_pemenang] -= self.alpha * (xi - self.prototypes[indeks_pemenang])
-
-            self.alpha -= self.alpha * self.learning_rate
-            self.epoch_bobots.append((epoch, self.prototypes.copy(), self.prototype_labels.copy()))
-
-    def fit(self, X, y):
-        self.inisialisasi_bobot(X, y)
-        self.perbarui_bobot(X, y)
-
-    def predict(self, X):
-        y_pred = []
-        for xi in X:
-            jarak = np.linalg.norm(self.prototypes - xi, axis=1)
-            indeks_pemenang = np.argmin(jarak)
-            y_pred.append(self.prototype_labels[indeks_pemenang])
-        return np.array(y_pred)
-
-    def nilai_bobot(self):
-        return self.prototypes, self.prototype_labels
 
 # Aplikasi Streamlit
 st.title("Klasifikasi Diabetes Menggunakan LVQ")
@@ -87,100 +30,141 @@ df.info(buf=buffer)
 s = buffer.getvalue()
 st.text(s)
 
-# Praproses data
-X = df.iloc[:, :-1]
-y = df.iloc[:, -1]
+# Preprocessing data
+def preprocess_data(data, scaler=None):
+    data = data.dropna()  # Menghapus nilai yang hilang
+    X = data.iloc[:, :-1].values
+    y = data.iloc[:, -1].values
+    if scaler is None:
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+    else:
+        X_scaled = scaler.transform(X)
+    return X_scaled, y, scaler
 
-Q1 = X.quantile(0.25)
-Q3 = X.quantile(0.75)
-IQR = Q3 - Q1
+# Inisialisasi prototipe
+def initialize_prototypes(X, y):
+    classes = np.unique(y)
+    prototypes = []
+    for c in classes:
+        class_samples = X[y == c]
+        prototype = random.choice(class_samples)
+        prototypes.append(prototype)
+    return np.array(prototypes), classes
 
-outliers = ((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)
-lower_bound = Q1 - 1.5 * IQR
-upper_bound = Q3 + 1.5 * IQR
-X[outliers] = np.where(X[outliers] < lower_bound, lower_bound, X[outliers])
-X[outliers] = np.where(X[outliers] > upper_bound, upper_bound, X[outliers])
-
-le = LabelEncoder()
-y_encoded = le.fit_transform(y)
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Pastikan setiap kelas memiliki minimal 20 data
-kelas_0 = df[df.iloc[:, -1] == 0]
-kelas_1 = df[df.iloc[:, -1] == 1]
-
-if len(kelas_0) >= 20 and len(kelas_1) >= 20:
-    kelas_0_sample = kelas_0.sample(n=20, random_state=42)
-    kelas_1_sample = kelas_1.sample(n=20, random_state=42)
-    
-    data_sample = pd.concat([kelas_0_sample, kelas_1_sample])
-    
-    X_sample = data_sample.iloc[:, :-1]
-    y_sample = data_sample.iloc[:, -1]
-
-    y_sample_encoded = le.fit_transform(y_sample)
-    X_sample_scaled = scaler.fit_transform(X_sample)
-
-    X_train, X_test, y_train, y_test = train_test_split(X_sample_scaled, y_sample_encoded, test_size=0.2, random_state=42)
-
-    st.write(f"Ukuran data train: {X_train.shape[0]}")
-    st.write(f"Ukuran data uji: {X_test.shape[0]}")
-
-    lvq = LVQ(n_prototypes=1, alpha=0.01, learning_rate=0.2, max_epochs=150, min_error=0.01)
-    lvq.fit(X_train, y_train)
-    
-    y_test_pred = lvq.predict(X_test)
-    test_accuracy = (y_test_pred == y_test).mean()
-    st.write(f"Akurasi Uji: {test_accuracy:.2f}")
-
+# Fungsi pelatihan LVQ
+def train_lvq(X, y, prototypes, classes, learning_rate, n_epochs):
     epoch_data = []
-    for epoch, bobot, label in lvq.epoch_bobots:
-        for proto, lbl in zip(bobot, label):
-            epoch_data.append((epoch, lbl, *proto))
+    for epoch in range(n_epochs):
+        for i in range(len(X)):
+            sample = X[i]
+            label = y[i]
+            distances = np.linalg.norm(prototypes - sample, axis=1)
+            nearest_idx = np.argmin(distances)
+            nearest_prototype = prototypes[nearest_idx]
+            if classes[nearest_idx] == label:
+                prototypes[nearest_idx] += learning_rate * (sample - nearest_prototype)
+            else:
+                prototypes[nearest_idx] -= learning_rate * (sample - nearest_prototype)
+        
+        # Menyimpan posisi prototipe untuk epoch saat ini
+        epoch_data.append((epoch + 1, prototypes.copy()))
+    return prototypes, epoch_data
+
+# Fungsi untuk menghitung akurasi
+def calculate_accuracy(X, y, prototypes, classes):
+    correct_predictions = 0
+    for i in range(len(X)):
+        sample = X[i]
+        label = y[i]
+        distances = np.linalg.norm(prototypes - sample, axis=1)
+        nearest_idx = np.argmin(distances)
+        if classes[nearest_idx] == label:
+            correct_predictions += 1
+    accuracy = correct_predictions / len(X)
+    return accuracy
+
+# Fungsi untuk membuat prediksi
+def predict(sample, prototypes, classes):
+    distances = np.linalg.norm(prototypes - sample, axis=1)
+    nearest_idx = np.argmin(distances)
+    return classes[nearest_idx]
+
+# Preprocessing data
+X, y, scaler = preprocess_data(df)
+
+# Antarmuka pengguna Streamlit
+st.sidebar.header('Parameter Input Pengguna')
+learning_rate = st.sidebar.slider('Learning Rate', 0.01, 1.0, 0.1)
+n_epochs = st.sidebar.slider('Jumlah Epoch', 10, 1000, 100)
+
+st.subheader('Lakukan Training Terlebih Dahulu Dengan Mengatur Learning Rate dan Jumlah Epoch Lalu Latih Model!')
+if st.button('Latih Model'):
+    prototypes, classes = initialize_prototypes(X, y)
     
-    epoch_df = pd.DataFrame(epoch_data, columns=["Epoch", "Kelas"] + [f"Fitur {i+1}" for i in range(X_train.shape[1])])
-    st.write("Bobot pada setiap epoch:")
+    st.subheader('Bobot Awal')
+    st.write(prototypes)
+    
+    initial_prototypes = prototypes.copy()
+    
+    prototypes, epoch_data = train_lvq(X, y, prototypes, classes, learning_rate, n_epochs)
+    
+    st.text('Pelatihan model selesai!')
+
+    
+    accuracy = calculate_accuracy(X, y, prototypes, classes)
+    st.subheader('Akurasi Model')
+    st.write(f'Akurasi: {accuracy * 100:.2f}%')
+
+    st.subheader('Detail Algoritma')
+    st.write(f'Learning Rate: {learning_rate}')
+    st.write(f'Jumlah Epoch: {n_epochs}')
+    st.write(f'Kelas: {classes}')
+    
+    
+    st.subheader('Bobot Akhir')
+    st.write(prototypes)
+    st.write(f'Kelas: {classes}')
+    
+    st.subheader('Detail Epoch')
+    # Membuat DataFrame untuk menampilkan detail epoch
+    epoch_details = []
+    for epoch, proto in epoch_data:
+        epoch_dict = {'Epoch': epoch}
+        for i, p in enumerate(proto):
+            if i == 0:
+                epoch_dict.update({f'W0{j+1}': feature for j, feature in enumerate(p)})
+            elif i == 1:
+                epoch_dict.update({f'W1{j+1}': feature for j, feature in enumerate(p)})
+        epoch_details.append(epoch_dict)
+        
+    epoch_df = pd.DataFrame(epoch_details)
+    
     st.write(epoch_df)
 
-    bobot, bobot_target = lvq.nilai_bobot()
-    st.write("Bobot Akhir:")
-    for proto, label in zip(bobot, bobot_target):
-        st.write(f"Kelas {label}: {proto}")
+    # Menyimpan model yang telah dilatih dan scaler di session state
+    st.session_state['prototypes'] = prototypes
+    st.session_state['classes'] = classes
+    st.session_state['scaler'] = scaler
 
-    perbandingan = pd.DataFrame({"Aktual": y_test, "Prediksi": y_test_pred})
-    st.write("## Prediksi Diabetes")
-    input_data = []
-    for col in X.columns:
-        nilai = st.number_input(f"Masukkan {col}", value=0.0)
-        input_data.append(nilai)
-    
-    input_data = np.array(input_data).reshape(1, -1)
-    input_data_scaled = scaler.transform(input_data)
-    
-    if st.button("Prediksi"):
-        prediksi = lvq.predict(input_data_scaled)
-        prediksi_label = le.inverse_transform(prediksi)
-        if prediksi_label[0] == 1:
-            st.write("Kelas prediksi untuk data input adalah: 1 (Diabetes)")
+# Input dengan nama deskriptif
+st.subheader('Prediksi Diabetes')
+input_features = {}
+feature_names = df.columns[:-1]
+
+for feature in feature_names:
+    input_features[feature] = st.number_input(f'{feature}', value=0.0)
+
+if st.button('Prediksi'):
+    if 'prototypes' in st.session_state and 'classes' in st.session_state and 'scaler' in st.session_state:
+        input_sample = np.array([input_features[feature] for feature in feature_names]).reshape(1, -1)
+        input_sample_scaled = st.session_state['scaler'].transform(input_sample)
+        prediction = predict(input_sample_scaled[0], st.session_state['prototypes'], st.session_state['classes'])
+        if prediction == 0:
+            st.write("Prediksi: Non-diabetes (0)")
         else:
-            st.write("Kelas prediksi untuk data input adalah: 0 (Non-Diabetes)")
-else:
-    st.write("Dataset tidak memiliki minimal 20 data untuk setiap kelas.")
+            st.write("Prediksi: Diabetes (1)")
+    else:
+        st.write("Silakan latih model terlebih dahulu.")
 
-
-with pd.ExcelWriter('Laporan_LVQ_Diabetes.xlsx') as writer:
-    df.to_excel(writer, sheet_name='Data Asli', index=False)
-    X.to_excel(writer, sheet_name='Praproses Data', index=False)  # Ganti X dengan DataFrame setelah outlier handling
-    data_sample.to_excel(writer, sheet_name='Data Sampling', index=False)
-    pd.DataFrame(X_train, columns=X.columns).to_excel(writer, sheet_name='Data Training', index=False)
-    pd.DataFrame(X_test, columns=X.columns).to_excel(writer, sheet_name='Data Testing', index=False)
-    perbandingan.to_excel(writer, sheet_name='Hasil Prediksi', index=False)
-    epoch_df.to_excel(writer, sheet_name='Bobot Tiap Epoch', index=False)
-
-    # Buat DataFrame untuk bobot akhir
-    bobot_akhir_df = pd.DataFrame([["Akhir"] + bobot[0].tolist()], columns=["Epoch"] + [f"Fitur {i+1}" for i in range(X_train.shape[1])])
-    bobot_akhir_df.to_excel(writer, sheet_name='Bobot Akhir', index=False)
-
-st.write("Laporan telah disimpan dalam file Laporan_LVQ_Diabetes.xlsx")
+st.sidebar.markdown("[Lihat Source Code](https://github.com/andrianbaros/LVQ-DIABETES)")
