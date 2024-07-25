@@ -1,43 +1,83 @@
-# LVQ-DIABETES
+Tentu! Berikut adalah versi yang lebih berbeda dari `README.md`, dengan gaya yang lebih detail dan informatif:
 
-This project aims to develop a diabetes classification system utilizing three machine learning algorithms: Learning Vector Quantization (LVQ). The objective is to accurately classify instances of diabetes based on a given dataset.
-Diabetes Classification Using LVQ.
+---
 
-Files
-diabetes(LVQ, KNN, KMEANS).csv: The dataset used for training and testing the models.
-lvq.py: The main Python script that contains the implementation of the LVQ model.
-requirements.txt: A list of dependencies required to run the project.
-run.sh: A shell script to run the project.
-Installation
-Clone the repository:
+# Klasifikasi Diabetes Menggunakan LVQ
 
-bash
-Copy code
-git clone <repository-url>
-cd <repository-directory>
-Install the dependencies:
+Selamat datang di proyek "Klasifikasi Diabetes Menggunakan LVQ"! Proyek ini bertujuan untuk menggunakan algoritma Learning Vector Quantization (LVQ) untuk mengklasifikasikan data diabetes, menggunakan Streamlit sebagai antarmuka pengguna.
 
-bash
-Copy code
-pip install -r requirements.txt
-Usage
-To run the project, use the following command:
+## Table of Contents
 
-bash
-Copy code
-bash run.sh
-Dataset
-The dataset used in this project is diabetes(LVQ, KNN, KMEANS).csv. It contains various features related to diabetes that are used to train and test the models.
+1. [Pengenalan Anggota](#pengenalan-anggota)
+2. [Fitur](#fitur)
+3. [Cara Menjalankan Aplikasi](#cara-menjalankan-aplikasi)
+   - [Secara Lokal](#1-menjalankan-aplikasi-secara-lokal)
+   - [Secara Online](#2-mengakses-aplikasi-secara-online)
+4. [Struktur Proyek](#struktur-proyek)
+5. [Informasi Tambahan](#informasi-tambahan)
 
-Model Implementation
-LVQ
-The LVQ model is implemented in the lvq.py script. The script includes functions for training and testing the model, as well as evaluating its performance.
+## Pengenalan Anggota
 
-Dependencies
-The required dependencies are listed in the requirements.txt file. Install them using:
+**KELOMPOK 7**
 
-bash
-Copy code
-pip install -r requirements.txt
-Contact
-For any questions or issues, please contact [andrianbaros10@gmail.com].
+- **Andrian Baros** (10122003)
+- **M. Fathi Zaidan** (10122017)
+- **Khotibul Umam** (10122036)
+- **Arya Ababil** (10122506)
+
+## Fitur
+
+- **Visualisasi Data**: Menampilkan dataset diabetes dan statistik deskriptif.
+- **Training LVQ**: Mengatur parameter learning rate dan jumlah epoch untuk melatih model LVQ.
+- **Evaluasi Model**: Menyediakan akurasi model setelah pelatihan.
+- **Prediksi**: Membuat prediksi berdasarkan input pengguna.
+
+## Cara Menjalankan Aplikasi
+
+### 1. Menjalankan Aplikasi Secara Lokal
+
+Untuk menjalankan aplikasi di komputer lokal Anda, ikuti langkah-langkah berikut:
+
+1. **Instalasi Dependencies**:
+   - Pastikan Python terinstal di sistem Anda.
+   - (Opsional) Buat dan aktifkan environment virtual:
+     ```bash
+     python -m venv venv
+     source venv/bin/activate  # Di Windows: venv\Scripts\activate
+     ```
+   - Instal dependensi yang diperlukan dengan `requirements.txt`:
+     ```bash
+     pip install -r requirements.txt
+     ```
+
+2. **Menjalankan Aplikasi**:
+   - Navigasikan ke direktori yang berisi file `lvq.py`:
+     ```bash
+     cd path/to/your/project
+     ```
+   - Jalankan aplikasi dengan Streamlit:
+     ```bash
+     streamlit run lvq.py
+     ```
+   - Aplikasi akan terbuka secara otomatis di browser. Jika tidak, buka [http://localhost:8501](http://localhost:8501).
+
+### 2. Mengakses Aplikasi Secara Online
+
+Aplikasi ini juga tersedia secara online. Anda dapat mengaksesnya menggunakan link berikut:
+
+- [Klasifikasi Diabetes Menggunakan LVQ - Kelompok 7](https://kelompok7-lvq-diabetes.streamlit.app/)
+
+## Struktur Proyek
+
+- `lvq.py`: Skrip utama untuk aplikasi Streamlit dan implementasi algoritma LVQ.
+- `requirements.txt`: Daftar paket Python yang diperlukan untuk menjalankan aplikasi.
+- `catatan.txt`: Catatan penggunaan dan petunjuk tambahan.
+
+## Informasi Tambahan
+
+- **Source Code**: Lihat [source code di GitHub](https://github.com/andrianbaros/LVQ-DIABETES).
+- **Dokumentasi**: Pastikan untuk memeriksa dokumentasi pada aplikasi dan repositori GitHub untuk informasi lebih lanjut tentang penggunaan dan fitur.
+
+---
+
+Anda dapat membuat file `README.md` dengan menyalin teks di atas ke editor teks dan menyimpannya sebagai `README.md`.
