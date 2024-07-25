@@ -1,0 +1,54 @@
+---
+
+# Catatan Penggunaan Aplikasi Klasifikasi Diabetes Menggunakan LVQ
+
+## Pengenalan Anggota
+
+KELOMPOK 7
+
+- 10122003 - Andrian Baros
+- 10122017 - M. Fathi Zaidan
+- 10122036 - Khotibul Umam
+- 10122506 - Arya Ababil
+
+## Cara Menjalankan Aplikasi
+
+### 1. Menjalankan Aplikasi Secara Lokal
+
+Untuk menjalankan aplikasi secara lokal menggunakan Streamlit, ikuti langkah-langkah berikut:
+
+1. **Instalasi Dependencies**:
+   - Pastikan Anda sudah memiliki Python terinstal di komputer Anda.
+   - Buat dan aktifkan environment virtual (opsional tetapi disarankan):
+     ```bash
+     python -m venv venv
+     source venv/bin/activate  # Di Windows: venv\Scripts\activate
+     ```
+   - Instal semua dependensi yang diperlukan dengan menggunakan `requirements.txt`:
+     ```bash
+     pip install -r requirements.txt
+     ```
+
+2. **Menjalankan Aplikasi**:
+   - Arahkan ke direktori tempat file `lvq.py` berada.
+   - Jalankan perintah berikut untuk memulai aplikasi:
+     ```bash
+     streamlit run lvq.py
+     ```
+   - Aplikasi akan terbuka di browser Anda secara otomatis. Jika tidak, buka (http://localhost:8501) di browser Anda.
+
+### 2. Mengakses Aplikasi Secara Online
+
+Aplikasi juga dapat diakses secara online melalui link berikut:
+
+- (https://kelompok7-lvq-diabetes.streamlit.app/)
+
+Cukup klik link tersebut di browser Anda untuk membuka aplikasi.
+
+## Informasi Tambahan
+
+- **Source Code**: (https://github.com/andrianbaros/LVQ-DIABETES)
+
+
+---
+TERIMAKASIH :)
