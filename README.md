@@ -1,5 +1,3 @@
-Tentu! Berikut adalah versi yang lebih berbeda dari `README.md`, dengan gaya yang lebih detail dan informatif:
-
 ---
 
 # Klasifikasi Diabetes Menggunakan LVQ
@@ -76,7 +74,6 @@ Aplikasi ini juga tersedia secara online. Anda dapat mengaksesnya menggunakan li
 ## Informasi Tambahan
 
 - **Source Code**: Lihat [source code di GitHub](https://github.com/andrianbaros/LVQ-DIABETES).
-- **Dokumentasi**: Pastikan untuk memeriksa dokumentasi pada aplikasi dan repositori GitHub untuk informasi lebih lanjut tentang penggunaan dan fitur.
 
 ---
 
