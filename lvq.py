@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
-import random
 import io
 
 # Aplikasi Streamlit
@@ -30,32 +28,26 @@ df.info(buf=buffer)
 s = buffer.getvalue()
 st.text(s)
 
-# Preprocessing data
-def preprocess_data(data, scaler=None):
-    data = data.dropna()  # Menghapus nilai yang hilang
-    X = data.iloc[:, :-1].values
-    y = data.iloc[:, -1].values
-    if scaler is None:
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-    else:
-        X_scaled = scaler.transform(X)
-    return X_scaled, y, scaler
-
-# Inisialisasi prototipe
-def initialize_prototypes(X, y):
-    classes = np.unique(y)
-    prototypes = []
-    for c in classes:
-        class_samples = X[y == c]
-        prototype = random.choice(class_samples)
-        prototypes.append(prototype)
-    return np.array(prototypes), classes
+def initialize_prototypes(df):
+    # Menggunakan baris pertama dan kedua sebagai prototipe
+    X = df.iloc[:, :-1].values
+    return X[:2], np.unique(df.iloc[:, -1].values)
 
 # Fungsi pelatihan LVQ
-def train_lvq(X, y, prototypes, classes, learning_rate, n_epochs):
+def train_lvq(df, prototypes, classes, n_epochs):
+    X = df.iloc[:, :-1].values
+    y = df.iloc[:, -1].values
     epoch_data = []
+    
     for epoch in range(n_epochs):
+        # Menentukan learning rate untuk epoch saat ini
+        if epoch == 0:
+            learning_rate = 0.5
+        elif epoch == 1:
+            learning_rate = 0.05
+        else:
+            learning_rate = np.random.uniform(0.01, 1.0)
+
         for i in range(len(X)):
             sample = X[i]
             label = y[i]
@@ -68,11 +60,13 @@ def train_lvq(X, y, prototypes, classes, learning_rate, n_epochs):
                 prototypes[nearest_idx] -= learning_rate * (sample - nearest_prototype)
         
         # Menyimpan posisi prototipe untuk epoch saat ini
-        epoch_data.append((epoch + 1, prototypes.copy()))
+        epoch_data.append((epoch + 1, learning_rate, prototypes.copy()))
     return prototypes, epoch_data
 
 # Fungsi untuk menghitung akurasi
-def calculate_accuracy(X, y, prototypes, classes):
+def calculate_accuracy(df, prototypes, classes):
+    X = df.iloc[:, :-1].values
+    y = df.iloc[:, -1].values
     correct_predictions = 0
     for i in range(len(X)):
         sample = X[i]
@@ -90,53 +84,55 @@ def predict(sample, prototypes, classes):
     nearest_idx = np.argmin(distances)
     return classes[nearest_idx]
 
-# Preprocessing data
-X, y, scaler = preprocess_data(df)
+# Initialize prototypes directly from df.head(2)
+initial_prototypes, classes = initialize_prototypes(df)
+print("Initial Prototypes:\n", initial_prototypes)
 
 # Antarmuka pengguna Streamlit
 st.sidebar.header('Parameter Input Pengguna')
-learning_rate = st.sidebar.slider('Learning Rate', 0.01, 1.0, 0.1)
-n_epochs = st.sidebar.slider('Jumlah Epoch', 10, 1000, 100)
+n_epochs = st.sidebar.slider('Jumlah Epoch', 10, 150, 150)
 
-st.subheader('Lakukan Training Terlebih Dahulu Dengan Mengatur Learning Rate dan Jumlah Epoch Lalu Latih Model!')
+st.subheader('Lakukan Training Terlebih Dahulu Dengan Mengatur Jumlah Epoch Lalu Latih Model!')
 if st.button('Latih Model'):
-    prototypes, classes = initialize_prototypes(X, y)
+    prototypes = initialize_prototypes(df)[0]
     
     st.subheader('Bobot Awal')
-    st.write(prototypes)
+    st.write(pd.DataFrame(prototypes, columns=df.columns[:-1]))
     
     initial_prototypes = prototypes.copy()
     
-    prototypes, epoch_data = train_lvq(X, y, prototypes, classes, learning_rate, n_epochs)
+    prototypes, epoch_data = train_lvq(df, prototypes, classes, n_epochs)
     
     st.text('Pelatihan model selesai!')
 
-    
-    accuracy = calculate_accuracy(X, y, prototypes, classes)
+    accuracy = calculate_accuracy(df, prototypes, classes)
     st.subheader('Akurasi Model')
     st.write(f'Akurasi: {accuracy * 100:.2f}%')
 
     st.subheader('Detail Algoritma')
-    st.write(f'Learning Rate: {learning_rate}')
     st.write(f'Jumlah Epoch: {n_epochs}')
     st.write(f'Kelas: {classes}')
     
-    
     st.subheader('Bobot Akhir')
-    st.write(prototypes)
+    st.write(pd.DataFrame(prototypes, columns=df.columns[:-1]))
     st.write(f'Kelas: {classes}')
     
     st.subheader('Detail Epoch')
     # Membuat DataFrame untuk menampilkan detail epoch
     epoch_details = []
-    for epoch, proto in epoch_data:
-        epoch_dict = {'Epoch': epoch}
-        for i, p in enumerate(proto):
-            if i == 0:
-                epoch_dict.update({f'W0{j+1}': feature for j, feature in enumerate(p)})
-            elif i == 1:
-                epoch_dict.update({f'W1{j+1}': feature for j, feature in enumerate(p)})
-        epoch_details.append(epoch_dict)
+    for epoch, lr, proto in epoch_data:
+        for i, p in enumerate(proto[:2]):  # Menampilkan 2 data untuk 1 epoch
+            # Menghitung bobot akhir (jarak) untuk kelas 0 dan kelas 1 menggunakan rumus
+            bobot_kelas_0 = np.sqrt(np.sum((p - initial_prototypes[0]) ** 2))
+            bobot_kelas_1 = np.sqrt(np.sum((p - initial_prototypes[1]) ** 2))
+            epoch_dict = {
+                'Epoch': epoch,
+                'Learning Rate': lr,
+                'Bobot Kelas 0': bobot_kelas_0,
+                'Bobot Kelas 1': bobot_kelas_1,
+            }
+            epoch_dict.update({f'W{j+1}': feature for j, feature in enumerate(p)})
+            epoch_details.append(epoch_dict)
         
     epoch_df = pd.DataFrame(epoch_details)
     
@@ -145,7 +141,6 @@ if st.button('Latih Model'):
     # Menyimpan model yang telah dilatih dan scaler di session state
     st.session_state['prototypes'] = prototypes
     st.session_state['classes'] = classes
-    st.session_state['scaler'] = scaler
 
 # Input dengan nama deskriptif
 st.subheader('Prediksi Diabetes')
@@ -156,10 +151,9 @@ for feature in feature_names:
     input_features[feature] = st.number_input(f'{feature}', value=0.0)
 
 if st.button('Prediksi'):
-    if 'prototypes' in st.session_state and 'classes' in st.session_state and 'scaler' in st.session_state:
+    if 'prototypes' in st.session_state and 'classes' in st.session_state:
         input_sample = np.array([input_features[feature] for feature in feature_names]).reshape(1, -1)
-        input_sample_scaled = st.session_state['scaler'].transform(input_sample)
-        prediction = predict(input_sample_scaled[0], st.session_state['prototypes'], st.session_state['classes'])
+        prediction = predict(input_sample[0], st.session_state['prototypes'], st.session_state['classes'])
         if prediction == 0:
             st.write("Prediksi: Non-diabetes (0)")
         else:
